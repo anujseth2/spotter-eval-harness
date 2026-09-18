@@ -1,0 +1,13 @@
+# Secrets
+.env
+
+# Customer data and run output — never commit these
+results/
+data/questions.json
+data/reference.json
+data/calibration_ids.txt
+data/model_labels.json
+
+__pycache__/
+*.pyc
+.DS_Store

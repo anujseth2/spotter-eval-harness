@@ -1,0 +1,3 @@
+# The runner, grader and reporter use only the Python standard library.
+# openpyxl is needed for src/build_xlsx.py.
+openpyxl>=3.1

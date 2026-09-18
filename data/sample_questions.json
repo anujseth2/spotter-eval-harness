@@ -1,0 +1,74 @@
+[
+  {
+    "id": "1.0",
+    "question": "Show me the stores whose gross margin improved the most in the last 6 months",
+    "expected_source": "Sales",
+    "expected_items": "Sales Fact\nStore Dim",
+    "expected_answer": "Stores ranked by greatest increase in gross margin percentage over the trailing 6 months versus the prior period.",
+    "bucket": "Profitability",
+    "primary_eval_metrics": ["Gross Margin", "Gross Margin %", "Net Sales", "Cost of Goods Sold"]
+  },
+  {
+    "id": "2.0",
+    "question": "Which product categories are driving the revenue decline this quarter?",
+    "expected_source": "Sales",
+    "expected_items": "Sales Fact\nProduct Dim",
+    "expected_answer": "Revenue change quarter over quarter broken out by product category, with the largest negative contributors first.",
+    "bucket": "Revenue Analysis",
+    "primary_eval_metrics": ["Net Sales", "Revenue Change vs Prior Quarter", "Contribution to Change"]
+  },
+  {
+    "id": "3.0",
+    "question": "What is the average order value by channel for the last 12 months?",
+    "expected_source": "Sales",
+    "expected_items": "Sales Fact\nChannel Dim",
+    "expected_answer": "Average order value trended monthly and split by sales channel over the trailing 12 months.",
+    "bucket": "Revenue Analysis",
+    "primary_eval_metrics": ["Average Order Value", "Order Count", "Net Sales"]
+  },
+  {
+    "id": "4.0",
+    "question": "Which items are at risk of stocking out in the next two weeks?",
+    "expected_source": "Inventory",
+    "expected_items": "Inventory Snapshot\nProduct Dim",
+    "expected_answer": "Items whose on-hand units divided by recent daily sell-through fall below a 14 day cover.",
+    "bucket": "Inventory Health",
+    "primary_eval_metrics": ["On Hand Units", "Days of Supply", "Sell Through Rate", "Weeks of Cover"]
+  },
+  {
+    "id": "5.0",
+    "question": "Compare this customer's spend to the segment average",
+    "expected_source": "Sales",
+    "expected_items": "Sales Fact\nCustomer Dim",
+    "expected_answer": "The named customer's total spend against the average spend of their assigned segment, over a comparable window.",
+    "bucket": "Customer Analysis",
+    "primary_eval_metrics": ["Customer Spend", "Segment Average Spend", "Variance to Segment"]
+  },
+  {
+    "id": "6.0",
+    "question": "Did our spring promotion actually lift units sold?",
+    "expected_source": "Sales",
+    "expected_items": "Sales Fact\nPromotion Dim",
+    "expected_answer": "Units sold during the promotion window versus an equivalent baseline window, for promoted items.",
+    "bucket": "Promotion Effectiveness",
+    "primary_eval_metrics": ["Units Sold", "Promotional Lift", "Baseline Units"]
+  },
+  {
+    "id": "7.0",
+    "question": "Does discount depth correlate with return rate?",
+    "expected_source": "Sales + Returns",
+    "expected_items": "Sales Fact\nReturns Fact",
+    "expected_answer": "Return rate plotted against average discount percentage, by product or order, to show whether deeper discounts return more.",
+    "bucket": "Returns",
+    "primary_eval_metrics": ["Discount %", "Return Rate", "Returned Units", "Units Sold"]
+  },
+  {
+    "id": "8.0",
+    "question": "Show me year over year sales by region as a bar chart",
+    "expected_source": "Sales",
+    "expected_items": "Sales Fact\nGeography Dim",
+    "expected_answer": "Net sales for the current year versus the prior year, grouped by region, rendered as a column chart.",
+    "bucket": "Visualization & Reporting",
+    "primary_eval_metrics": ["Net Sales", "Net Sales YoY", "YoY Growth %"]
+  }
+]
