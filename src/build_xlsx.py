@@ -47,8 +47,10 @@ reps.sort(key=lambda r: (float(str(r["id"])) if str(r["id"]).replace(".", "", 1)
 
 ARIAL = lambda **k: Font(name="Arial", **k)
 HDR_FILL = PatternFill("solid", fgColor="1F3864")
-VFILL = {"Correct": "C6EFCE", "Partial": "FFEB9C", "Wrong": "FFC7CE", "Clarification": "DDEBF7", "Infra": "D9D9D9"}
-VFONT = {"Correct": "006100", "Partial": "9C5700", "Wrong": "9C0006", "Clarification": "1F4E79", "Infra": "595959"}
+VFILL = {"Correct": "C6EFCE", "Partial": "FFEB9C", "Wrong": "FFC7CE", "Clarification": "DDEBF7",
+         "Infra": "D9D9D9", "JudgeError": "E4DFEC"}
+VFONT = {"Correct": "006100", "Partial": "9C5700", "Wrong": "9C0006", "Clarification": "1F4E79",
+         "Infra": "595959", "JudgeError": "604A7B"}
 thin = Side(style="thin", color="D0D0D0")
 BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
 
@@ -127,18 +129,20 @@ rows = [("Correct", f'=COUNTIF({R}!G2:G{nrows},"Correct")'),
         ("Partial", f'=COUNTIF({R}!G2:G{nrows},"Partial")'),
         ("Clarification", f'=COUNTIF({R}!G2:G{nrows},"Clarification")'),
         ("Wrong", f'=COUNTIF({R}!G2:G{nrows},"Wrong")'),
-        ("Infra (excluded)", f'=COUNTIF({R}!G2:G{nrows},"Infra")')]
+        ("Infra (excluded)", f'=COUNTIF({R}!G2:G{nrows},"Infra")'),
+        ("Ungraded (JudgeError)", f'=COUNTIF({R}!G2:G{nrows},"JudgeError")')]
 r0 = 5
 for i, (lab, f) in enumerate(rows):
     put(f"A{r0+i}", lab, bold=True); put(f"B{r0+i}", f, align="center")
     if lab.split()[0] in VFILL:
         s[f"A{r0+i}"].fill = PatternFill("solid", fgColor=VFILL[lab.split()[0]])
-put(f"A{r0+5}", "Scored (excl. infra)", bold=True); put(f"B{r0+5}", f"={ntotal}-B{r0+4}", align="center")
-put(f"A{r0+6}", "Headline accuracy (Correct)", bold=True); put(f"B{r0+6}", f"=B{r0}/B{r0+5}", num="0.0%", align="center")
-put(f"A{r0+7}", "Weighted (Correct + 0.5 Partial)", bold=True); put(f"B{r0+7}", f"=(B{r0}+0.5*B{r0+1})/B{r0+5}", num="0.0%", align="center")
-put(f"A{r0+8}", "Usable (Correct+Partial+Clarify)", bold=True); put(f"B{r0+8}", f"=(B{r0}+B{r0+1}+B{r0+2})/B{r0+5}", num="0.0%", align="center")
-put(f"A{r0+9}", "Auto-mode routing correct", bold=True)
-put(f"B{r0+9}", f'=IF(COUNTIF({R}!H2:H{nrows},"Y")+COUNTIF({R}!H2:H{nrows},"N")=0,"-",'
+put(f"A{r0+6}", "Scored (excl. infra + ungraded)", bold=True)
+put(f"B{r0+6}", f"={ntotal}-B{r0+4}-B{r0+5}", align="center")
+put(f"A{r0+7}", "Headline accuracy (Correct)", bold=True); put(f"B{r0+7}", f"=B{r0}/B{r0+6}", num="0.0%", align="center")
+put(f"A{r0+8}", "Weighted (Correct + 0.5 Partial)", bold=True); put(f"B{r0+8}", f"=(B{r0}+0.5*B{r0+1})/B{r0+6}", num="0.0%", align="center")
+put(f"A{r0+9}", "Usable (Correct+Partial+Clarify)", bold=True); put(f"B{r0+9}", f"=(B{r0}+B{r0+1}+B{r0+2})/B{r0+6}", num="0.0%", align="center")
+put(f"A{r0+10}", "Auto-mode routing correct", bold=True)
+put(f"B{r0+10}", f'=IF(COUNTIF({R}!H2:H{nrows},"Y")+COUNTIF({R}!H2:H{nrows},"N")=0,"-",'
                 f'COUNTIF({R}!H2:H{nrows},"Y")/(COUNTIF({R}!H2:H{nrows},"Y")+COUNTIF({R}!H2:H{nrows},"N")))',
     num="0.0%", align="center")
 

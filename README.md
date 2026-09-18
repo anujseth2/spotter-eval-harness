@@ -34,6 +34,7 @@ metric list literally.
 | Wrong | Misinterprets the question or resolves unrelated tokens |
 | Clarification | No analytical answer, but it appropriately asked for a missing specific. This is correct behaviour on an under-specified prompt, not a failure |
 | Infra | Transient gateway or tool error after retries. Excluded from the accuracy denominator and reported separately |
+| JudgeError | The grader itself failed: rejected API key, rate limit, truncated response. This says nothing about Spotter, so it is excluded from the denominator and reported loudly |
 
 Headline accuracy is Correct only. The harness also reports a weighted score that gives
 Partial half credit, and a "usable" number that adds appropriate clarifications.
@@ -167,6 +168,12 @@ with `--model <guid>` in `run_batch.py` you are measuring something easier than 
 The judge is an LLM and will occasionally be wrong. Calibrate on a small set first, read the
 rationales, and adjust the answer key if the judge is penalising a genuinely correct answer.
 The rationale and gap columns are in the workbook so a human can overrule any row.
+
+A grader failure is never scored as a Spotter failure. `grade.py` probes the judge on one
+question before it starts, so a rejected API key stops the run in seconds instead of after a
+full pass, and anything that fails mid-run becomes `JudgeError` rather than `Wrong`. That
+distinction matters: treating a 401 as a wrong answer silently understates the customer's
+accuracy, which is the one direction an error must never fall.
 
 `.env` is read as authoritative and the OS environment deliberately does not override it. A
 stale exported `TS_SECRET_KEY` in your shell profile is a classic way to get a confusing auth

@@ -11,6 +11,8 @@ Rubric (user-approved):
   Wrong        - misinterprets the question
   Clarification- appropriately asked for missing specifics (context-dependent Q)
   Infra        - 504/timeout/unknown error after retries (excluded from accuracy)
+  JudgeError   - the GRADER itself failed (bad key, rate limit, truncated response).
+                 Never a statement about Spotter. Excluded from accuracy, reported loudly.
 Also judged: routing_ok (did auto-mode pick a model containing the needed source).
 """
 import sys, os, json, time, urllib.request, urllib.error
@@ -85,7 +87,9 @@ def judge(key, run):
     )
     body = {
         "model": MODEL,
-        "max_tokens": 1200,
+        # Thinking is on by default on Opus 5 and its tokens count against max_tokens.
+        # A low cap here means the judge can hit the limit before emitting any JSON.
+        "max_tokens": 16000,
         "system": SYSTEM,
         "output_config": {"format": {"type": "json_schema", "schema": VERDICT_SCHEMA}, "effort": "medium"},
         "messages": [{"role": "user", "content": user}],
@@ -101,17 +105,21 @@ def judge(key, run):
                 resp = json.loads(r.read().decode())
             txt = next((b["text"] for b in resp.get("content", []) if b.get("type") == "text"), None)
             if not txt:
-                return {"verdict": "Wrong", "routing_ok": False, "rationale": "no judge output", "gap": "judge returned no text"}
-            return json.loads(txt)
+                stop = resp.get("stop_reason")
+                return {"judge_error": f"judge returned no text (stop_reason={stop})"}
+            try:
+                return json.loads(txt)
+            except json.JSONDecodeError as e:
+                return {"judge_error": f"judge returned unparseable JSON: {e}"}
         except urllib.error.HTTPError as e:
             code = e.code
             if code in (429, 500, 529, 503) and attempt < 3:
                 time.sleep(3 * (attempt + 1)); continue
-            return {"verdict": "Wrong", "routing_ok": False, "rationale": f"judge HTTP {code}", "gap": e.read().decode()[:150]}
+            return {"judge_error": f"judge HTTP {code}: {e.read().decode()[:150]}"}
         except Exception as e:
             if attempt < 3:
                 time.sleep(2 * (attempt + 1)); continue
-            return {"verdict": "Wrong", "routing_ok": False, "rationale": f"judge error {type(e).__name__}", "gap": str(e)[:150]}
+            return {"judge_error": f"judge error {type(e).__name__}: {str(e)[:150]}"}
 
 
 TRANSIENT = ("504", "gateway timeout", "unknown error", "timed out", "timeout", "502", "503",
@@ -125,6 +133,13 @@ def grade_run(key, run):
         out.update(verdict="Infra", routing_ok=None, rationale="transient infra error after retries", gap=run.get("error", "")[:150])
         return out
     v = judge(key, run)
+    if "judge_error" in v:
+        # The grader failed, which says nothing about Spotter. Scoring this as "Wrong"
+        # would silently deflate the customer's accuracy, so it gets its own verdict
+        # and is excluded from the denominator by report.py and build_xlsx.py.
+        out.update(verdict="JudgeError", routing_ok=None,
+                   rationale=v["judge_error"], gap="")
+        return out
     out.update(verdict=v.get("verdict"), routing_ok=v.get("routing_ok"),
                rationale=v.get("rationale"), gap=v.get("gap"))
     return out
@@ -136,17 +151,40 @@ def main():
     workers = int(sys.argv[sys.argv.index("--workers") + 1]) if "--workers" in sys.argv else 6
     key = load_key()
     runs = json.load(open(inp))
+    if not runs:
+        raise SystemExit(f"No runs in {inp}")
+
+    # Probe one call before spending a full pass. A key that exists but is rejected
+    # is the dangerous case: without this, every question comes back JudgeError and
+    # you only find out after grading the whole set.
+    probe = next((r for r in runs if r.get("produced_answer")), runs[0])
+    print(f"Probing the judge on id={probe['id']} ...")
+    pg = grade_run(key, probe)
+    if pg.get("verdict") == "JudgeError":
+        raise SystemExit(f"JUDGE UNAVAILABLE, nothing graded: {pg.get('rationale')}\n"
+                         f"Check ANTHROPIC_API_KEY in .env. Fix this before re-running.")
+    print(f"  judge OK ({pg.get('verdict')})")
+
     print(f"Grading {len(runs)} runs with {MODEL} | workers={workers}")
     graded = []
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(grade_run, key, r): r for r in runs}
         for i, f in enumerate(as_completed(futs), 1):
             g = f.result(); graded.append(g)
-            print(f"  [{i}/{len(runs)}] {g.get('verdict'):12s} id={g['id']}/{g.get('variant')}  {str(g.get('rationale'))[:70]}")
+            print(f"  [{i}/{len(runs)}] {str(g.get('verdict')):12s} id={g['id']}/{g.get('variant')}  {str(g.get('rationale'))[:70]}")
             if i % 25 == 0:
                 json.dump(graded, open(outp, "w"), indent=2)
     json.dump(graded, open(outp, "w"), indent=2)
+
+    n_je = sum(1 for g in graded if g.get("verdict") == "JudgeError")
     print(f"\nWrote {outp}")
+    if n_je:
+        print(f"\n*** WARNING: {n_je} of {len(graded)} runs could not be graded (JudgeError). ***")
+        print("    These are grader failures, not Spotter failures. They are excluded from")
+        print("    accuracy. Re-run grading for them before reporting a number to anyone.")
+        for g in graded:
+            if g.get("verdict") == "JudgeError":
+                print(f"      id={g['id']}: {str(g.get('rationale'))[:100]}")
 
 
 if __name__ == "__main__":
